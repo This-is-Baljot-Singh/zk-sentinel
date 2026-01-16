@@ -1,25 +1,18 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
-/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  // Support both the old Verifier and your new Sentinel contract
-  solidity: {
-    compilers: [
-      { version: "0.8.19" }, // For Sentinel.sol
-      { version: "0.6.11" }  // For the auto-generated Verifier.sol
-    ]
-  },
+  solidity: "0.8.19",
   networks: {
+    amoy: {
+      url: process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology",
+      accounts: [process.env.PRIVATE_KEY], 
+    },
     hardhat: {
-      chainId: 31337
+      chainId: 1337,
     },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-    },
-    // Prepare for Sepolia (Day 7)
-    sepolia: {
-      url: "https://rpc.ankr.com/eth_sepolia",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    }
+  },
+  paths: {
+    artifacts: "../frontend/app/lib/artifacts", // Auto-export to frontend
   },
 };

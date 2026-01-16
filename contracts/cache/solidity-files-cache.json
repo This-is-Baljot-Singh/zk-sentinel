@@ -1,8 +1,8 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "D:\\zk-sentinel\\contracts\\contracts\\Sentinel.sol": {
-      "lastModificationDate": 1768328401291,
+    "D:\\zk-sentinel-full\\contracts\\contracts\\Sentinel.sol": {
+      "lastModificationDate": 1768573481064,
       "contentHash": "5265e07855c323a232fe68122a6d7177",
       "sourceName": "contracts/Sentinel.sol",
       "solcConfig": {
@@ -37,9 +37,9 @@
         "ZKSentinel"
       ]
     },
-    "D:\\zk-sentinel\\contracts\\contracts\\Verifier.sol": {
-      "lastModificationDate": 1768328260479,
-      "contentHash": "71ca6447d683718935fa72f1b5f234c8",
+    "D:\\zk-sentinel-full\\contracts\\contracts\\Verifier.sol": {
+      "lastModificationDate": 1768573481064,
+      "contentHash": "3b6c06908e93c97645e0d663790f8b53",
       "sourceName": "contracts/Verifier.sol",
       "solcConfig": {
         "version": "0.8.19",
