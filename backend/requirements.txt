@@ -6,3 +6,12 @@ pydantic
 python-dotenv
 httpx
 numpy
+requests
+solana
+solders
+authlib
+itsdangerous
+starlette
+authlib
+itsdangerous
+starlette

@@ -2,102 +2,110 @@ import json
 import os
 import asyncio
 from web3 import Web3
-# FIXED IMPORTS: Matching the actual function names in your services
+
+# Import services
 from services.scoring import calculate_trust_score 
 from services.prover import generate_zk_proof 
 
-# --- TOOL 1: THE SCORER ---
-def run_scoring_tool(financial_data: dict, ocr_data: dict):
-    """
-    Custom Tool 1: Calculates credit score based on Interview + OCR data.
-    """
-    print(f"🕵️ Agent Scorer: Analyzing data...")
-    
-    # Merge data sources
-    income_claimed = financial_data.get("reported_income", 0)
-    income_evidence = ocr_data.get("ledger_total", 0)
-    
-    # Prepare string input for the AI Scorer (Scoring service expects a string)
-    analysis_input = f"""
-    User Reported Income: {income_claimed}
-    Document Verified Total: {income_evidence}
-    """
-    
-    # CALLING ACTUAL SERVICE
-    # calculate_trust_score returns a dict with 'score', 'risk_level', 'reasoning'
-    ai_result = calculate_trust_score(analysis_input)
-    
-    final_score = ai_result.get("score", 600)
-    
-    # Add simple risk logic on top if needed
-    if income_claimed > (income_evidence * 2):
-        print("⚠️ Risk Officer: High Discrepancy detected.")
-        final_score = int(final_score * 0.8) # 20% penalty
+# --- BLOCKCHAIN SELECTION ---
+# Try importing Solana first, fall back to Mock
+try:
+    from services.blockchain_solana import submit_proof_on_solana
+except ImportError:
+    print("⚠️ Solana service not found. Using Mock.")
+    def submit_proof_on_solana(proof_data, public_signals):
+        return {"tx_hash": "0xMOCK_SOLANA_SIG", "status": "success", "network": "MockSolana"}
 
-    return {
-        "credit_score": final_score,
-        "risk_flag": ai_result.get("risk_level", "Unknown"),
-        "details": ai_result.get("reasoning", "Score calculated via ZK-Sentinel")
-    }
-
-# --- TOOL 2: THE CRYPTOGRAPHER ---
-async def run_zk_generator_tool(score: int, wallet_address: str):
-    """
-    Custom Tool 2: Generates zk-SNARK proof.
-    NOTE: Changed to 'async' because generate_zk_proof is async.
-    """
-    print(f"🔐 Agent Cryptographer: Generating ZK-Proof for Score {score}...")
-    
-    # CALLING ACTUAL SERVICE
-    # We pass a dummy 'file_content' as it's not strictly used in your updated logic, 
-    # but the function signature might require it or we can pass empty string.
-    proof_result = await generate_zk_proof(
-        credit_score=score, 
-        file_content_str="agent_generated", 
-        wallet_address=wallet_address,
-        threshold=500
-    )
-    
-    return proof_result 
-
-# --- TOOL 3: THE NOTARY ---
-def run_blockchain_notary_tool(proof_data: dict):
-    """
-    Custom Tool 3: Submits proof to Polygon Amoy.
-    """
-    print(f"📜 Agent Notary: Submitting to Polygon...")
-    
-    rpc_url = os.getenv("AMOY_RPC_URL")
-    private_key = os.getenv("PRIVATE_KEY")
-    contract_address_raw = os.getenv("CONTRACT_ADDRESS")
-    
-    if not rpc_url or not private_key or not contract_address_raw:
-        return {"status": "error", "message": "Missing Blockchain Environment Variables"}
-
-    # FIX: Convert to Checksum Address to satisfy Web3 Typing
-    contract_address = Web3.to_checksum_address(contract_address_raw)
-
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    account = w3.eth.account.from_key(private_key)
-    
-    # Simplified ABI for verifyProof
-    abi = '[{"inputs":[{"internalType":"uint256[2]","name":"_pA","type":"uint256[2]"},{"internalType":"uint256[2][2]","name":"_pB","type":"uint256[2][2]"},{"internalType":"uint256[2]","name":"_pC","type":"uint256[2]"},{"internalType":"uint256[1]","name":"_pubSignals","type":"uint256[1]"}],"name":"verifyProof","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}]'
-    
-    # FIX: Now passing a strictly typed ChecksumAddress
-    contract = w3.eth.contract(address=contract_address, abi=abi)
+# --- AGENT 3: THE RISK OFFICER ---
+def run_risk_analysis_agent(interview_data: dict, auditor_data: dict):
+    print(f"⚖️ Agent 3 (Risk): Analyzing consistency...")
     
     try:
-        # In a real Hackathon demo, if you don't want to spend gas/wait for blocks,
-        # you often return a success mock here. 
-        # If you want real interaction:
-        # 1. Map proof_data JSON to pA, pB, pC arrays.
-        # 2. Build transaction.
+        claimed_income = int(interview_data.get("reported_income", 0))
+    except (ValueError, TypeError):
+        claimed_income = 0
         
-        return {
-            "status": "success", 
-            "tx_hash": "0x123...mock_hash_on_amoy", 
-            "network": "Polygon Amoy",
-            "message": "Proof verified on-chain (Simulated)"
-        }
+    try:
+        verified_total = int(auditor_data.get("verified_ledger_total", 0))
+    except (ValueError, TypeError):
+        verified_total = 0
+    
+    discrepancy = abs(claimed_income - verified_total)
+    risk_level = "Low"
+    reasoning = "Data is consistent."
+
+    if discrepancy > 20000:
+        risk_level = "High"
+        reasoning = f"Major Discrepancy! Claimed {claimed_income} vs Verified {verified_total}"
+    elif discrepancy > 5000:
+        risk_level = "Medium"
+        reasoning = f"Minor Discrepancy of {discrepancy} detected."
+
+    return {
+        "risk_level": risk_level,
+        "reasoning": reasoning,
+        "verified_income": verified_total
+    }
+
+# --- AGENT 4: THE SCORER ---
+def run_scoring_agent(risk_data: dict, financials: dict):
+    print(f"📊 Agent 4 (Scorer): Calculating Credit Score...")
+    
+    analysis_input = f"""
+    Risk Level: {risk_data.get('risk_level', 'Unknown')}
+    Verified Income: {risk_data.get('verified_income', 0)}
+    Discrepancy Notes: {risk_data.get('reasoning', '')}
+    """
+    
+    try:
+        ai_result = calculate_trust_score(analysis_input)
+        final_score = ai_result.get("score", 650)
+    except Exception as e:
+        print(f"⚠️ Scoring Service Error: {e}. Using fallback.")
+        final_score = 600
+
+    if risk_data.get("risk_level") == "High":
+        final_score = min(final_score, 550) 
+        
+    return {
+        "credit_score": final_score,
+        "details": risk_data.get("reasoning")
+    }
+
+# --- AGENT 5: THE CRYPTOGRAPHER ---
+async def run_crypto_agent(score: int, wallet_address: str):
+    print(f"🔐 Agent 5 (Cryptographer): Generating ZK-Proof for score {score}...")
+    
+    if not wallet_address:
+        return {"status": "error", "message": "Wallet address missing"}
+
+    try:
+        proof_result = await generate_zk_proof(
+            credit_score=score, 
+            file_content_str="agent_generated", 
+            wallet_address=wallet_address,
+            threshold=500
+        )
+        return proof_result
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# --- AGENT 6: THE NOTARY (UPDATED FOR SOLANA) ---
+async def run_notary_agent(proof_data: dict):
+    print(f"📜 Agent 6 (Notary): Minting credential on Solana...")
+    
+    if proof_data.get("status") == "error":
+        return {"status": "skipped", "reason": "Proof generation failed previously."}
+
+    proof = proof_data.get("proof", {})
+    public_signals = proof_data.get("public_signals", [])
+
+    if not proof or not public_signals:
+        return {"status": "error", "message": "Invalid Proof Data"}
+
+    try:
+        # Switch to Solana implementation
+        tx_result = submit_proof_on_solana(proof_data=proof, public_signals=public_signals)
+        return tx_result
     except Exception as e:
         return {"status": "error", "message": str(e)}
